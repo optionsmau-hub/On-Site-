@@ -1,25 +1,25 @@
 import { useState, useEffect } from "react";
 
-const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const ROLES = ["Bartender", "Mesero/a", "Host/Hostess", "Runner", "Cocina", "Bar Back", "Supervisor"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ROLES = ["Bartender", "Server", "Host/Hostess", "Runner", "Kitchen", "Bar Back", "Supervisor"];
 
 const ROLE_COLORS = {
   "Bartender":    { bg: "#fef3c7", border: "#f59e0b" },
-  "Mesero/a":     { bg: "#dbeafe", border: "#3b82f6" },
+  "Server":       { bg: "#dbeafe", border: "#3b82f6" },
   "Host/Hostess": { bg: "#fce7f3", border: "#ec4899" },
   "Runner":       { bg: "#d1fae5", border: "#10b981" },
-  "Cocina":       { bg: "#ede9fe", border: "#8b5cf6" },
+  "Kitchen":      { bg: "#ede9fe", border: "#8b5cf6" },
   "Bar Back":     { bg: "#ffedd5", border: "#f97316" },
   "Supervisor":   { bg: "#e0f2fe", border: "#0ea5e9" },
 };
 
 const INITIAL_USERS = [
-  { id: 1, name: "Manager", username: "manager", password: "admin123", role: "manager", phone: "", position: "", email: "" },
-  { id: 2, name: "Carlos Rivera", username: "carlos", password: "1234", role: "employee", phone: "787-555-0001", position: "Bartender", email: "" },
-  { id: 3, name: "Sofia Morales", username: "sofia", password: "1234", role: "employee", phone: "787-555-0002", position: "Mesero/a", email: "" },
-  { id: 4, name: "James Taylor", username: "james", password: "1234", role: "employee", phone: "787-555-0003", position: "Host/Hostess", email: "" },
-  { id: 5, name: "Mia Chen", username: "mia", password: "1234", role: "employee", phone: "787-555-0004", position: "Runner", email: "" },
+  { id: 1, name: "Manager", username: "Rodrigo1", password: "admin123", role: "manager", phone: "", position: "", email: "" },
+  { id: 2, name: "Douglas", username: "Douglas1", password: "1234", role: "employee", phone: "787-555-0001", position: "Bartender", email: "" },
+  { id: 3, name: "Rod", username: "Rod1", password: "1234", role: "employee", phone: "787-555-0002", position: "Server", email: "" },
+  { id: 4, name: "Josh", username: "Josh1", password: "1234", role: "employee", phone: "787-555-0003", position: "Host/Hostess", email: "" },
+  { id: 5, name: "Mia Chen", username: "Mia1", password: "1234", role: "employee", phone: "787-555-0004", position: "Runner", email: "" },
 ];
 
 const EMPTY_USER = { name: "", username: "", password: "", phone: "", position: "", email: "" };
@@ -33,7 +33,7 @@ function formatDate(dk) {
   if (!dk) return "";
   const [y, m, d] = dk.split("-");
   const obj = new Date(Number(y), Number(m)-1, Number(d));
-  return `${DAYS[obj.getDay()]}, ${d} de ${MONTHS[Number(m)-1]} ${y}`;
+  return `${DAYS[obj.getDay()]}, ${MONTHS[Number(m)-1]} ${d}, ${y}`;
 }
 function loadLS(key, fb) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } }
 function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
@@ -78,7 +78,7 @@ export default function OnSite() {
   const [editIdx, setEditIdx] = useState(null);
   const [loginCreds, setLoginCreds] = useState({ username:"", password:"" });
   const [loginError, setLoginError] = useState("");
-  const [form, setForm] = useState({ name:"", startTime:"18:00", endTime:"23:00", role:"Mesero/a", assignees:[], notes:"" });
+  const [form, setForm] = useState({ name:"", startTime:"18:00", endTime:"23:00", role:"Server", assignees:[], notes:"" });
   const [userForm, setUserForm] = useState(EMPTY_USER);
   const [editingUserId, setEditingUserId] = useState(null);
 
@@ -93,14 +93,14 @@ export default function OnSite() {
     e.preventDefault();
     const u = users.find(u => u.username === loginCreds.username.trim() && u.password === loginCreds.password);
     if (u) { setCurrentUser(u); setLoginError(""); }
-    else setLoginError("Usuario o contraseña incorrectos.");
+    else setLoginError("Incorrect username or password.");
   }
 
   function getDay(dk) { return events[dk] || []; }
 
   function openAdd(dk) {
     setSelectedDate(dk); setEditIdx(null);
-    setForm({ name:"", startTime:"18:00", endTime:"23:00", role:"Mesero/a", assignees:[], notes:"" });
+    setForm({ name:"", startTime:"18:00", endTime:"23:00", role:"Server", assignees:[], notes:"" });
     setModal("event");
   }
   function openEdit(dk, i) {
@@ -119,12 +119,7 @@ export default function OnSite() {
     setEvents(p => ({ ...p, [dk]: p[dk].filter((_,idx) => idx!==i) }));
   }
 
-  // User CRUD
-  function openAddUser() {
-    setEditingUserId(null);
-    setUserForm(EMPTY_USER);
-    setModal("user");
-  }
+  function openAddUser() { setEditingUserId(null); setUserForm(EMPTY_USER); setModal("user"); }
   function openEditUser(u) {
     setEditingUserId(u.id);
     setUserForm({ name:u.name, username:u.username, password:u.password, phone:u.phone||"", position:u.position||"", email:u.email||"" });
@@ -137,12 +132,10 @@ export default function OnSite() {
     } else {
       setUsers(p => [...p, { ...userForm, id:Date.now(), role:"employee" }]);
     }
-    setModal(null);
-    setEditingUserId(null);
-    setUserForm(EMPTY_USER);
+    setModal(null); setEditingUserId(null); setUserForm(EMPTY_USER);
   }
   function deleteUser(id) {
-    if (window.confirm("¿Eliminar este empleado?")) setUsers(p => p.filter(u => u.id !== id));
+    if (window.confirm("Remove this employee?")) setUsers(p => p.filter(u => u.id !== id));
   }
 
   function myEvents() {
@@ -159,18 +152,24 @@ export default function OnSite() {
   if (!currentUser) {
     return (
       <div style={{ minHeight:"100vh", background:"#0a0a0f", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Georgia, serif" }}>
-        <div style={{ width:360, background:"#13131a", border:"1px solid #2a2a3a", borderRadius:16, padding:"48px 40px", boxShadow:"0 24px 80px rgba(0,0,0,0.6)" }}>
+        <div style={{ width:380, background:"#13131a", border:"1px solid #2a2a3a", borderRadius:16, padding:"48px 40px", boxShadow:"0 24px 80px rgba(0,0,0,0.6)" }}>
           <div style={{ textAlign:"center", marginBottom:36 }}>
             <div style={{ fontSize:11, letterSpacing:6, color:"#c8a96e", textTransform:"uppercase", marginBottom:8 }}>On St. Elmo</div>
             <div style={{ fontSize:32, fontWeight:"bold", color:"#f5f0e8", letterSpacing:-1 }}>OnSite</div>
-            <div style={{ fontSize:13, color:"#6b6b80", marginTop:6 }}>Gestión de turnos</div>
+            <div style={{ fontSize:13, color:"#6b6b80", marginTop:6 }}>Schedule Management</div>
           </div>
           <form onSubmit={handleLogin}>
-            <input style={S.input} placeholder="Usuario" value={loginCreds.username} onChange={e => setLoginCreds(p=>({...p,username:e.target.value}))} />
-            <input style={{...S.input,marginTop:12}} type="password" placeholder="Contraseña" value={loginCreds.password} onChange={e => setLoginCreds(p=>({...p,password:e.target.value}))} />
+            <input style={S.input} placeholder="Username" value={loginCreds.username} onChange={e => setLoginCreds(p=>({...p,username:e.target.value}))} />
+            <input style={{...S.input,marginTop:12}} type="password" placeholder="Password" value={loginCreds.password} onChange={e => setLoginCreds(p=>({...p,password:e.target.value}))} />
             {loginError && <div style={{ color:"#f87171", fontSize:13, marginTop:8 }}>{loginError}</div>}
-            <button type="submit" style={{...S.btnPrimary, width:"100%", marginTop:24, padding:14}}>Entrar</button>
+            <button type="submit" style={{...S.btnPrimary, width:"100%", marginTop:24, padding:14}}>Sign In</button>
           </form>
+          <div style={{ marginTop:28, borderTop:"1px solid #2a2a3a", paddingTop:20 }}>
+            <div style={{ fontSize:11, color:"#4a4a5a", marginBottom:10, letterSpacing:1, textTransform:"uppercase" }}>Manager Access</div>
+            <div style={{ fontSize:12, color:"#5a5a70" }}>
+              Username: <span style={{ color:"#c8a96e" }}>manager</span> &nbsp;|&nbsp; Password: <span style={{ color:"#c8a96e" }}>admin123</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -179,7 +178,6 @@ export default function OnSite() {
   // ── APP ──
   return (
     <div style={{ minHeight:"100vh", background:"#0a0a0f", color:"#f5f0e8", fontFamily:"Georgia, serif" }}>
-      {/* Header */}
       <div style={{ background:"#13131a", borderBottom:"1px solid #2a2a3a", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60 }}>
         <div style={{ display:"flex", alignItems:"center", gap:20 }}>
           <div>
@@ -187,9 +185,9 @@ export default function OnSite() {
             <span style={{ fontSize:20, fontWeight:"bold", letterSpacing:-0.5 }}>OnSite</span>
           </div>
           <div style={{ display:"flex", gap:4 }}>
-            <button onClick={() => setView("calendar")} style={view==="calendar" ? S.tabActive : S.tabInactive}>Calendario</button>
-            {!isManager && <button onClick={() => setView("mySchedule")} style={view==="mySchedule" ? S.tabActive : S.tabInactive}>Mis Turnos</button>}
-            {isManager && <button onClick={() => setView("team")} style={view==="team" ? S.tabActive : S.tabInactive}>Equipo</button>}
+            <button onClick={() => setView("calendar")} style={view==="calendar" ? S.tabActive : S.tabInactive}>Calendar</button>
+            {!isManager && <button onClick={() => setView("mySchedule")} style={view==="mySchedule" ? S.tabActive : S.tabInactive}>My Schedule</button>}
+            {isManager && <button onClick={() => setView("team")} style={view==="team" ? S.tabActive : S.tabInactive}>Team</button>}
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
@@ -199,7 +197,7 @@ export default function OnSite() {
             {isManager && <span style={{ background:"#c8a96e22", color:"#c8a96e", fontSize:10, padding:"2px 8px", borderRadius:10, letterSpacing:1, textTransform:"uppercase", border:"1px solid #c8a96e44" }}>Manager</span>}
           </div>
           <button onClick={() => setCurrentUser(null)} style={{ background:"none", border:"none", color:"#6b6b80", cursor:"pointer", fontSize:13, display:"flex", alignItems:"center", gap:4 }}>
-            <Ico d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /> Salir
+            <Ico d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /> Sign Out
           </button>
         </div>
       </div>
@@ -217,7 +215,7 @@ export default function OnSite() {
               </div>
               {isManager && (
                 <button onClick={openAddUser} style={{...S.btnSecondary, display:"flex", alignItems:"center", gap:6}}>
-                  <Ico d="M12 5v14M5 12h14" /> Agregar empleado
+                  <Ico d="M12 5v14M5 12h14" /> Add Employee
                 </button>
               )}
             </div>
@@ -253,7 +251,7 @@ export default function OnSite() {
                           const rc = ROLE_COLORS[ev.role]||{bg:"#f3f4f6",border:"#9ca3af"};
                           return <div key={ei} style={{ background:rc.bg+"22", border:`1px solid ${rc.border}55`, borderLeft:`3px solid ${rc.border}`, borderRadius:4, padding:"2px 5px", fontSize:10, color:rc.border, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.startTime} {ev.name}</div>;
                         })}
-                        {visEvs.length>3 && <div style={{ fontSize:10, color:"#6b6b80" }}>+{visEvs.length-3} más</div>}
+                        {visEvs.length>3 && <div style={{ fontSize:10, color:"#6b6b80" }}>+{visEvs.length-3} more</div>}
                       </div>
                     </div>
                   );
@@ -266,9 +264,9 @@ export default function OnSite() {
         {/* ── MY SCHEDULE ── */}
         {view==="mySchedule" && (
           <div>
-            <h2 style={{ fontSize:22, fontWeight:"bold", marginBottom:24 }}>Mis Turnos</h2>
+            <h2 style={{ fontSize:22, fontWeight:"bold", marginBottom:24 }}>My Schedule</h2>
             {myEvents().length===0
-              ? <div style={{ textAlign:"center", color:"#4a4a5a", padding:"60px 0", fontSize:15 }}>No tienes turnos asignados próximamente.</div>
+              ? <div style={{ textAlign:"center", color:"#4a4a5a", padding:"60px 0", fontSize:15 }}>No upcoming shifts assigned.</div>
               : myEvents().map((ev,i) => {
                   const rc = ROLE_COLORS[ev.role]||{bg:"#f3f4f6",border:"#9ca3af"};
                   return (
@@ -294,9 +292,9 @@ export default function OnSite() {
         {view==="team" && isManager && (
           <div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
-              <h2 style={{ fontSize:22, fontWeight:"bold", margin:0 }}>Equipo</h2>
+              <h2 style={{ fontSize:22, fontWeight:"bold", margin:0 }}>Team</h2>
               <button onClick={openAddUser} style={{...S.btnPrimary, display:"flex", alignItems:"center", gap:6}}>
-                <Ico d="M12 5v14M5 12h14" /> Nuevo empleado
+                <Ico d="M12 5v14M5 12h14" /> New Employee
               </button>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:16 }}>
@@ -309,30 +307,15 @@ export default function OnSite() {
                       <div style={{ fontSize:12, color:"#6b6b80" }}>@{u.username}</div>
                     </div>
                   </div>
-                  {u.position && (
-                    <div style={{ fontSize:12, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ color:"#6b6b80" }}>Posición:</span>
-                      <span style={{ color:"#c8c8d8" }}>{u.position}</span>
-                    </div>
-                  )}
-                  {u.phone && (
-                    <div style={{ fontSize:12, marginBottom:6, display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ color:"#6b6b80" }}>Tel:</span>
-                      <a href={`tel:${u.phone}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.phone}</a>
-                    </div>
-                  )}
-                  {u.email && (
-                    <div style={{ fontSize:12, marginBottom:12, display:"flex", alignItems:"center", gap:6, overflow:"hidden" }}>
-                      <span style={{ color:"#6b6b80" }}>Email:</span>
-                      <a href={`mailto:${u.email}`} style={{ color:"#c8a96e", textDecoration:"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{u.email}</a>
-                    </div>
-                  )}
+                  {u.position && <div style={{ fontSize:12, marginBottom:6 }}><span style={{ color:"#6b6b80" }}>Position: </span><span style={{ color:"#c8c8d8" }}>{u.position}</span></div>}
+                  {u.phone && <div style={{ fontSize:12, marginBottom:6 }}><span style={{ color:"#6b6b80" }}>Phone: </span><a href={`tel:${u.phone}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.phone}</a></div>}
+                  {u.email && <div style={{ fontSize:12, marginBottom:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}><span style={{ color:"#6b6b80" }}>Email: </span><a href={`mailto:${u.email}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.email}</a></div>}
                   {!u.phone && !u.email && !u.position && <div style={{ marginBottom:12 }} />}
                   <div style={{ display:"flex", gap:8 }}>
                     <button onClick={() => openEditUser(u)} style={{...S.btnSecondary, flex:1, fontSize:12, padding:"7px 0", display:"flex", alignItems:"center", justifyContent:"center", gap:5}}>
-                      <Ico d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={13}/> Editar
+                      <Ico d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={13}/> Edit
                     </button>
-                    <button onClick={() => deleteUser(u.id)} style={{...S.btnDanger, flex:1, fontSize:12, padding:"7px 0"}}>Eliminar</button>
+                    <button onClick={() => deleteUser(u.id)} style={{...S.btnDanger, flex:1, fontSize:12, padding:"7px 0"}}>Remove</button>
                   </div>
                 </div>
               ))}
@@ -345,11 +328,11 @@ export default function OnSite() {
       {modal==="day" && selectedDate && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>Eventos del día</div>
+            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>Day Events</div>
             <h3 style={{ margin:0, fontSize:20 }}>{formatDate(selectedDate)}</h3>
           </div>
           {getDay(selectedDate).length===0
-            ? <div style={{ color:"#4a4a5a", textAlign:"center", padding:"30px 0" }}>Sin eventos este día.</div>
+            ? <div style={{ color:"#4a4a5a", textAlign:"center", padding:"30px 0" }}>No events this day.</div>
             : getDay(selectedDate).map((ev,i) => {
                 const rc = ROLE_COLORS[ev.role]||{bg:"#f3f4f6",border:"#9ca3af"};
                 const assigned = employees.filter(u => ev.assignees?.includes(u.id));
@@ -386,7 +369,7 @@ export default function OnSite() {
           }
           {isManager && (
             <button onClick={() => { setModal(null); setTimeout(()=>openAdd(selectedDate),50); }} style={{...S.btnPrimary, width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:8}}>
-              <Ico d="M12 5v14M5 12h14" /> Agregar evento
+              <Ico d="M12 5v14M5 12h14" /> Add Event
             </button>
           )}
         </Modal>
@@ -396,32 +379,32 @@ export default function OnSite() {
       {modal==="event" && isManager && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>{editIdx!==null?"Editar evento":"Nuevo evento"}</div>
+            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>{editIdx!==null?"Edit Event":"New Event"}</div>
             <h3 style={{ margin:0, fontSize:20 }}>{formatDate(selectedDate)}</h3>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <div>
-              <label style={S.label}>Nombre del evento</label>
-              <input style={S.input} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="Ej: Cena privada, Evento corporativo..." />
+              <label style={S.label}>Event Name</label>
+              <input style={S.input} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Private Dinner, Corporate Event..." />
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               <div>
-                <label style={S.label}>Hora inicio</label>
+                <label style={S.label}>Start Time</label>
                 <input style={S.input} type="time" value={form.startTime} onChange={e=>setForm(p=>({...p,startTime:e.target.value}))} />
               </div>
               <div>
-                <label style={S.label}>Hora fin</label>
+                <label style={S.label}>End Time</label>
                 <input style={S.input} type="time" value={form.endTime} onChange={e=>setForm(p=>({...p,endTime:e.target.value}))} />
               </div>
             </div>
             <div>
-              <label style={S.label}>Rol / Posición</label>
+              <label style={S.label}>Role / Position</label>
               <select style={S.input} value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}>
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label style={S.label}>Asignar empleados</label>
+              <label style={S.label}>Assign Employees</label>
               <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:6 }}>
                 {employees.map(u => {
                   const sel = form.assignees.includes(u.id);
@@ -434,13 +417,13 @@ export default function OnSite() {
               </div>
             </div>
             <div>
-              <label style={S.label}>Notas adicionales</label>
-              <textarea style={{...S.input, resize:"vertical", minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Instrucciones especiales, dress code, etc." />
+              <label style={S.label}>Additional Notes</label>
+              <textarea style={{...S.input, resize:"vertical", minHeight:70}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Special instructions, dress code, etc." />
             </div>
           </div>
           <div style={{ display:"flex", gap:10, marginTop:24 }}>
-            <button onClick={()=>setModal(null)} style={{...S.btnSecondary,flex:1}}>Cancelar</button>
-            <button onClick={saveEvent} style={{...S.btnPrimary,flex:2}}>{editIdx!==null?"Guardar cambios":"Crear evento"}</button>
+            <button onClick={()=>setModal(null)} style={{...S.btnSecondary,flex:1}}>Cancel</button>
+            <button onClick={saveEvent} style={{...S.btnPrimary,flex:2}}>{editIdx!==null?"Save Changes":"Create Event"}</button>
           </div>
         </Modal>
       )}
@@ -449,43 +432,43 @@ export default function OnSite() {
       {modal==="user" && isManager && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>{editingUserId!==null?"Editar empleado":"Nuevo empleado"}</div>
-            <h3 style={{ margin:0, fontSize:20 }}>{editingUserId!==null?"Actualizar información":"Agregar al equipo"}</h3>
+            <div style={{ fontSize:11, letterSpacing:3, color:"#c8a96e", textTransform:"uppercase", marginBottom:4 }}>{editingUserId!==null?"Edit Employee":"New Employee"}</div>
+            <h3 style={{ margin:0, fontSize:20 }}>{editingUserId!==null?"Update Information":"Add to Team"}</h3>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
             <div>
-              <label style={S.label}>Nombre completo</label>
-              <input style={S.input} value={userForm.name} onChange={e=>setUserForm(p=>({...p,name:e.target.value}))} placeholder="Nombre del empleado" />
+              <label style={S.label}>Full Name</label>
+              <input style={S.input} value={userForm.name} onChange={e=>setUserForm(p=>({...p,name:e.target.value}))} placeholder="Employee name" />
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               <div>
-                <label style={S.label}>Usuario</label>
+                <label style={S.label}>Username</label>
                 <input style={S.input} value={userForm.username} onChange={e=>setUserForm(p=>({...p,username:e.target.value}))} placeholder="username" />
               </div>
               <div>
-                <label style={S.label}>Contraseña</label>
-                <input style={S.input} value={userForm.password} onChange={e=>setUserForm(p=>({...p,password:e.target.value}))} placeholder="Contraseña" />
+                <label style={S.label}>Password</label>
+                <input style={S.input} value={userForm.password} onChange={e=>setUserForm(p=>({...p,password:e.target.value}))} placeholder="Password" />
               </div>
             </div>
             <div>
-              <label style={S.label}>Teléfono</label>
+              <label style={S.label}>Phone</label>
               <input style={S.input} value={userForm.phone} onChange={e=>setUserForm(p=>({...p,phone:e.target.value}))} placeholder="787-555-0000" />
             </div>
             <div>
               <label style={S.label}>Email</label>
-              <input style={S.input} type="email" value={userForm.email} onChange={e=>setUserForm(p=>({...p,email:e.target.value}))} placeholder="empleado@email.com" />
+              <input style={S.input} type="email" value={userForm.email} onChange={e=>setUserForm(p=>({...p,email:e.target.value}))} placeholder="employee@email.com" />
             </div>
             <div>
-              <label style={S.label}>Posición principal</label>
+              <label style={S.label}>Primary Position</label>
               <select style={S.input} value={userForm.position} onChange={e=>setUserForm(p=>({...p,position:e.target.value}))}>
-                <option value="">Sin especificar</option>
+                <option value="">Not specified</option>
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           </div>
           <div style={{ display:"flex", gap:10, marginTop:24 }}>
-            <button onClick={()=>setModal(null)} style={{...S.btnSecondary,flex:1}}>Cancelar</button>
-            <button onClick={saveUser} style={{...S.btnPrimary,flex:2}}>{editingUserId!==null?"Guardar cambios":"Agregar empleado"}</button>
+            <button onClick={()=>setModal(null)} style={{...S.btnSecondary,flex:1}}>Cancel</button>
+            <button onClick={saveUser} style={{...S.btnPrimary,flex:2}}>{editingUserId!==null?"Save Changes":"Add Employee"}</button>
           </div>
         </Modal>
       )}
