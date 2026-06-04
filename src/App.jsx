@@ -1,5 +1,38 @@
 import { useState, useEffect } from "react";
 
+const SUPABASE_URL = "https://fmnggvaqkwtwyurpqkki.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtbmdndmFxa3d0d3l1cnBxa2tpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1MjY4MjUsImV4cCI6MjA5NjEwMjgyNX0.d5ZdPsU8kSuaNCdboB-RGW3-5Hw5HH6M30UlspQd7TM";
+
+const headers = {
+  "Content-Type": "application/json",
+  "apikey": SUPABASE_KEY,
+  "Authorization": `Bearer ${SUPABASE_KEY}`,
+};
+
+async function sbGet(table) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, { headers });
+  return res.json();
+}
+async function sbInsert(table, data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST", headers: { ...headers, "Prefer": "return=representation" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+async function sbUpdate(table, id, data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: "PATCH", headers: { ...headers, "Prefer": "return=representation" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+async function sbDelete(table, id) {
+  await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: "DELETE", headers,
+  });
+}
+
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const ROLES = ["Bartender", "Server", "Host/Hostess", "Runner", "Kitchen", "Bar Back", "Supervisor"];
@@ -14,14 +47,6 @@ const ROLE_COLORS = {
   "Supervisor":   { bg: "#e0f2fe", border: "#0ea5e9" },
 };
 
-const INITIAL_USERS = [
-  { id: 1, name: "Manager", username: "Rodrigo1", password: "admin123", role: "manager", phone: "", position: "", email: "" },
-  { id: 2, name: "Douglas", username: "Douglas1", password: "1234", role: "employee", phone: "787-555-0001", position: "Bartender", email: "" },
-  { id: 3, name: "Rod", username: "Rod1", password: "1234", role: "employee", phone: "787-555-0002", position: "Server", email: "" },
-  { id: 4, name: "Josh", username: "Josh1", password: "1234", role: "employee", phone: "787-555-0003", position: "Host/Hostess", email: "" },
-  { id: 5, name: "Mia Chen", username: "Mia1", password: "1234", role: "employee", phone: "787-555-0004", position: "Runner", email: "" },
-];
-
 const EMPTY_USER = { name: "", username: "", password: "", phone: "", position: "", email: "" };
 
 function getMonthDays(year, month) {
@@ -35,8 +60,6 @@ function formatDate(dk) {
   const obj = new Date(Number(y), Number(m)-1, Number(d));
   return `${DAYS[obj.getDay()]}, ${MONTHS[Number(m)-1]} ${d}, ${y}`;
 }
-function loadLS(key, fb) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fb; } catch { return fb; } }
-function saveLS(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
 
 const S = {
   input: { width:"100%", boxSizing:"border-box", background:"#0f0f14", border:"1px solid #2a2a3a", borderRadius:8, padding:"10px 12px", color:"#f5f0e8", fontSize:14, outline:"none", fontFamily:"Georgia, serif" },
@@ -67,8 +90,9 @@ function Modal({ children, onClose }) {
 }
 
 export default function OnSite() {
-  const [users, setUsers] = useState(() => loadLS("onsite_users", INITIAL_USERS));
-  const [events, setEvents] = useState(() => loadLS("onsite_events", {}));
+  const [users, setUsers] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [view, setView] = useState("calendar");
   const [calYear, setCalYear] = useState(new Date().getFullYear());
@@ -78,12 +102,19 @@ export default function OnSite() {
   const [editIdx, setEditIdx] = useState(null);
   const [loginCreds, setLoginCreds] = useState({ username:"", password:"" });
   const [loginError, setLoginError] = useState("");
-  const [form, setForm] = useState({ name:"", startTime:"18:00", endTime:"23:00", role:"Server", assignees:[], notes:"" });
+  const [form, setForm] = useState({ name:"", date:"", start_time:"18:00", end_time:"23:00", role:"Server", assignees:[], notes:"" });
   const [userForm, setUserForm] = useState(EMPTY_USER);
   const [editingUserId, setEditingUserId] = useState(null);
 
-  useEffect(() => { saveLS("onsite_users", users); }, [users]);
-  useEffect(() => { saveLS("onsite_events", events); }, [events]);
+  useEffect(() => { loadData(); }, []);
+
+  async function loadData() {
+    setLoading(true);
+    const [u, e] = await Promise.all([sbGet("users"), sbGet("events")]);
+    setUsers(Array.isArray(u) ? u : []);
+    setEvents(Array.isArray(e) ? e : []);
+    setLoading(false);
+  }
 
   const employees = users.filter(u => u.role === "employee");
   const isManager = currentUser?.role === "manager";
@@ -96,27 +127,31 @@ export default function OnSite() {
     else setLoginError("Incorrect username or password.");
   }
 
-  function getDay(dk) { return events[dk] || []; }
+  function getDay(dk) { return events.filter(ev => ev.date === dk); }
 
   function openAdd(dk) {
     setSelectedDate(dk); setEditIdx(null);
-    setForm({ name:"", startTime:"18:00", endTime:"23:00", role:"Server", assignees:[], notes:"" });
+    setForm({ name:"", date:dk, start_time:"18:00", end_time:"23:00", role:"Server", assignees:[], notes:"" });
     setModal("event");
   }
-  function openEdit(dk, i) {
-    setSelectedDate(dk); setEditIdx(i);
-    setForm({ ...events[dk][i] });
+  function openEdit(ev) {
+    setSelectedDate(ev.date); setEditIdx(ev.id);
+    setForm({ name:ev.name, date:ev.date, start_time:ev.start_time, end_time:ev.end_time, role:ev.role, assignees:ev.assignees||[], notes:ev.notes||"" });
     setModal("event");
   }
-  function saveEvent() {
+  async function saveEvent() {
     if (!form.name.trim()) return;
-    const list = getDay(selectedDate);
-    const updated = editIdx !== null ? list.map((ev,i) => i===editIdx ? {...form} : ev) : [...list, {...form, id:Date.now()}];
-    setEvents(p => ({ ...p, [selectedDate]: updated }));
+    if (editIdx !== null) {
+      await sbUpdate("events", editIdx, form);
+    } else {
+      await sbInsert("events", form);
+    }
+    await loadData();
     setModal(null);
   }
-  function deleteEvent(dk, i) {
-    setEvents(p => ({ ...p, [dk]: p[dk].filter((_,idx) => idx!==i) }));
+  async function deleteEvent(id) {
+    await sbDelete("events", id);
+    await loadData();
   }
 
   function openAddUser() { setEditingUserId(null); setUserForm(EMPTY_USER); setModal("user"); }
@@ -125,23 +160,27 @@ export default function OnSite() {
     setUserForm({ name:u.name, username:u.username, password:u.password, phone:u.phone||"", position:u.position||"", email:u.email||"" });
     setModal("user");
   }
-  function saveUser() {
+  async function saveUser() {
     if (!userForm.name.trim() || !userForm.username.trim() || !userForm.password.trim()) return;
     if (editingUserId !== null) {
-      setUsers(p => p.map(u => u.id === editingUserId ? { ...u, ...userForm } : u));
+      await sbUpdate("users", editingUserId, { ...userForm, role:"employee" });
     } else {
-      setUsers(p => [...p, { ...userForm, id:Date.now(), role:"employee" }]);
+      await sbInsert("users", { ...userForm, role:"employee" });
     }
+    await loadData();
     setModal(null); setEditingUserId(null); setUserForm(EMPTY_USER);
   }
-  function deleteUser(id) {
-    if (window.confirm("Remove this employee?")) setUsers(p => p.filter(u => u.id !== id));
+  async function deleteUser(id) {
+    if (window.confirm("Remove this employee?")) {
+      await sbDelete("users", id);
+      await loadData();
+    }
   }
 
   function myEvents() {
-    return Object.entries(events)
-      .flatMap(([dk, list]) => list.filter(ev => ev.assignees?.includes(currentUser.id)).map(ev => ({ dk, ...ev })))
-      .sort((a,b) => a.dk.localeCompare(b.dk));
+    return events
+      .filter(ev => ev.assignees?.includes(currentUser.id))
+      .sort((a,b) => a.date.localeCompare(b.date));
   }
 
   const { first, total } = getMonthDays(calYear, calMonth);
@@ -158,24 +197,21 @@ export default function OnSite() {
             <div style={{ fontSize:32, fontWeight:"bold", color:"#f5f0e8", letterSpacing:-1 }}>OnSite</div>
             <div style={{ fontSize:13, color:"#6b6b80", marginTop:6 }}>Schedule Management</div>
           </div>
-          <form onSubmit={handleLogin}>
-            <input style={S.input} placeholder="Username" value={loginCreds.username} onChange={e => setLoginCreds(p=>({...p,username:e.target.value}))} />
-            <input style={{...S.input,marginTop:12}} type="password" placeholder="Password" value={loginCreds.password} onChange={e => setLoginCreds(p=>({...p,password:e.target.value}))} />
-            {loginError && <div style={{ color:"#f87171", fontSize:13, marginTop:8 }}>{loginError}</div>}
-            <button type="submit" style={{...S.btnPrimary, width:"100%", marginTop:24, padding:14}}>Sign In</button>
-          </form>
-          <div style={{ marginTop:28, borderTop:"1px solid #2a2a3a", paddingTop:20 }}>
-            <div style={{ fontSize:11, color:"#4a4a5a", marginBottom:10, letterSpacing:1, textTransform:"uppercase" }}>Manager Access</div>
-            <div style={{ fontSize:12, color:"#5a5a70" }}>
-              Username: <span style={{ color:"#c8a96e" }}>manager</span> &nbsp;|&nbsp; Password: <span style={{ color:"#c8a96e" }}>admin123</span>
-            </div>
-          </div>
+          {loading ? (
+            <div style={{ textAlign:"center", color:"#6b6b80", padding:"20px 0" }}>Loading...</div>
+          ) : (
+            <form onSubmit={handleLogin}>
+              <input style={S.input} placeholder="Username" value={loginCreds.username} onChange={e => setLoginCreds(p=>({...p,username:e.target.value}))} />
+              <input style={{...S.input,marginTop:12}} type="password" placeholder="Password" value={loginCreds.password} onChange={e => setLoginCreds(p=>({...p,password:e.target.value}))} />
+              {loginError && <div style={{ color:"#f87171", fontSize:13, marginTop:8 }}>{loginError}</div>}
+              <button type="submit" style={{...S.btnPrimary, width:"100%", marginTop:24, padding:14}}>Sign In</button>
+            </form>
+          )}
         </div>
       </div>
     );
   }
 
-  // ── APP ──
   return (
     <div style={{ minHeight:"100vh", background:"#0a0a0f", color:"#f5f0e8", fontFamily:"Georgia, serif" }}>
       <div style={{ background:"#13131a", borderBottom:"1px solid #2a2a3a", padding:"0 24px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60 }}>
@@ -204,7 +240,7 @@ export default function OnSite() {
 
       <div style={{ maxWidth:1100, margin:"0 auto", padding:"32px 24px" }}>
 
-        {/* ── CALENDAR ── */}
+        {/* CALENDAR */}
         {view==="calendar" && (
           <div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28 }}>
@@ -249,7 +285,7 @@ export default function OnSite() {
                       <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
                         {visEvs.slice(0,3).map((ev,ei) => {
                           const rc = ROLE_COLORS[ev.role]||{bg:"#f3f4f6",border:"#9ca3af"};
-                          return <div key={ei} style={{ background:rc.bg+"22", border:`1px solid ${rc.border}55`, borderLeft:`3px solid ${rc.border}`, borderRadius:4, padding:"2px 5px", fontSize:10, color:rc.border, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.startTime} {ev.name}</div>;
+                          return <div key={ei} style={{ background:rc.bg+"22", border:`1px solid ${rc.border}55`, borderLeft:`3px solid ${rc.border}`, borderRadius:4, padding:"2px 5px", fontSize:10, color:rc.border, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{ev.start_time} {ev.name}</div>;
                         })}
                         {visEvs.length>3 && <div style={{ fontSize:10, color:"#6b6b80" }}>+{visEvs.length-3} more</div>}
                       </div>
@@ -261,7 +297,7 @@ export default function OnSite() {
           </div>
         )}
 
-        {/* ── MY SCHEDULE ── */}
+        {/* MY SCHEDULE */}
         {view==="mySchedule" && (
           <div>
             <h2 style={{ fontSize:22, fontWeight:"bold", marginBottom:24 }}>My Schedule</h2>
@@ -270,17 +306,17 @@ export default function OnSite() {
               : myEvents().map((ev,i) => {
                   const rc = ROLE_COLORS[ev.role]||{bg:"#f3f4f6",border:"#9ca3af"};
                   return (
-                    <div key={i} style={{ background:"#13131a", border:`1px solid ${rc.border}44`, borderLeft:`4px solid ${rc.border}`, borderRadius:12, padding:"16px 20px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:ev.dk>=today?1:0.5 }}>
+                    <div key={i} style={{ background:"#13131a", border:`1px solid ${rc.border}44`, borderLeft:`4px solid ${rc.border}`, borderRadius:12, padding:"16px 20px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between", opacity:ev.date>=today?1:0.5 }}>
                       <div>
-                        <div style={{ fontSize:13, color:"#9a9ab0", marginBottom:4 }}>{formatDate(ev.dk)}</div>
+                        <div style={{ fontSize:13, color:"#9a9ab0", marginBottom:4 }}>{formatDate(ev.date)}</div>
                         <div style={{ fontSize:17, fontWeight:"bold", marginBottom:6 }}>{ev.name}</div>
                         <div style={{ display:"flex", gap:10, alignItems:"center" }}>
                           <span style={{ background:rc.bg+"33", color:rc.border, fontSize:11, padding:"2px 8px", borderRadius:8, border:`1px solid ${rc.border}44` }}>{ev.role}</span>
-                          <span style={{ fontSize:12, color:"#9a9ab0" }}>{ev.startTime} – {ev.endTime}</span>
+                          <span style={{ fontSize:12, color:"#9a9ab0" }}>{ev.start_time} – {ev.end_time}</span>
                         </div>
                         {ev.notes && <div style={{ fontSize:12, color:"#6b6b80", marginTop:6 }}>{ev.notes}</div>}
                       </div>
-                      {ev.dk>=today && <div style={{ width:8, height:8, borderRadius:"50%", background:rc.border, flexShrink:0 }} />}
+                      {ev.date>=today && <div style={{ width:8, height:8, borderRadius:"50%", background:rc.border, flexShrink:0 }} />}
                     </div>
                   );
                 })
@@ -288,7 +324,7 @@ export default function OnSite() {
           </div>
         )}
 
-        {/* ── TEAM ── */}
+        {/* TEAM */}
         {view==="team" && isManager && (
           <div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
@@ -309,7 +345,7 @@ export default function OnSite() {
                   </div>
                   {u.position && <div style={{ fontSize:12, marginBottom:6 }}><span style={{ color:"#6b6b80" }}>Position: </span><span style={{ color:"#c8c8d8" }}>{u.position}</span></div>}
                   {u.phone && <div style={{ fontSize:12, marginBottom:6 }}><span style={{ color:"#6b6b80" }}>Phone: </span><a href={`tel:${u.phone}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.phone}</a></div>}
-                  {u.email && <div style={{ fontSize:12, marginBottom:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}><span style={{ color:"#6b6b80" }}>Email: </span><a href={`mailto:${u.email}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.email}</a></div>}
+                  {u.email && <div style={{ fontSize:12, marginBottom:12 }}><span style={{ color:"#6b6b80" }}>Email: </span><a href={`mailto:${u.email}`} style={{ color:"#c8a96e", textDecoration:"none" }}>{u.email}</a></div>}
                   {!u.phone && !u.email && !u.position && <div style={{ marginBottom:12 }} />}
                   <div style={{ display:"flex", gap:8 }}>
                     <button onClick={() => openEditUser(u)} style={{...S.btnSecondary, flex:1, fontSize:12, padding:"7px 0", display:"flex", alignItems:"center", justifyContent:"center", gap:5}}>
@@ -324,7 +360,7 @@ export default function OnSite() {
         )}
       </div>
 
-      {/* ── MODAL: Day Detail ── */}
+      {/* MODAL: Day Detail */}
       {modal==="day" && selectedDate && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
@@ -343,7 +379,7 @@ export default function OnSite() {
                         <div style={{ fontWeight:"bold", fontSize:16, marginBottom:4 }}>{ev.name}</div>
                         <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8, flexWrap:"wrap" }}>
                           <span style={{ background:rc.bg+"33", color:rc.border, fontSize:11, padding:"2px 8px", borderRadius:8, border:`1px solid ${rc.border}44` }}>{ev.role}</span>
-                          <span style={{ fontSize:12, color:"#9a9ab0" }}>{ev.startTime} – {ev.endTime}</span>
+                          <span style={{ fontSize:12, color:"#9a9ab0" }}>{ev.start_time} – {ev.end_time}</span>
                         </div>
                         {ev.notes && <div style={{ fontSize:12, color:"#6b6b80", marginBottom:8 }}>{ev.notes}</div>}
                         {assigned.length>0 && (
@@ -354,10 +390,10 @@ export default function OnSite() {
                       </div>
                       {isManager && (
                         <div style={{ display:"flex", gap:6, marginLeft:12 }}>
-                          <button onClick={() => { setModal(null); setTimeout(()=>openEdit(selectedDate,i),50); }} style={S.iconBtn}>
+                          <button onClick={() => { setModal(null); setTimeout(()=>openEdit(ev),50); }} style={S.iconBtn}>
                             <Ico d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" size={14}/>
                           </button>
-                          <button onClick={() => deleteEvent(selectedDate,i)} style={S.iconBtn}>
+                          <button onClick={() => deleteEvent(ev.id)} style={S.iconBtn}>
                             <Ico d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" size={14}/>
                           </button>
                         </div>
@@ -375,7 +411,7 @@ export default function OnSite() {
         </Modal>
       )}
 
-      {/* ── MODAL: Add/Edit Event ── */}
+      {/* MODAL: Add/Edit Event */}
       {modal==="event" && isManager && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
@@ -390,11 +426,11 @@ export default function OnSite() {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
               <div>
                 <label style={S.label}>Start Time</label>
-                <input style={S.input} type="time" value={form.startTime} onChange={e=>setForm(p=>({...p,startTime:e.target.value}))} />
+                <input style={S.input} type="time" value={form.start_time} onChange={e=>setForm(p=>({...p,start_time:e.target.value}))} />
               </div>
               <div>
                 <label style={S.label}>End Time</label>
-                <input style={S.input} type="time" value={form.endTime} onChange={e=>setForm(p=>({...p,endTime:e.target.value}))} />
+                <input style={S.input} type="time" value={form.end_time} onChange={e=>setForm(p=>({...p,end_time:e.target.value}))} />
               </div>
             </div>
             <div>
@@ -428,7 +464,7 @@ export default function OnSite() {
         </Modal>
       )}
 
-      {/* ── MODAL: Add/Edit User ── */}
+      {/* MODAL: Add/Edit User */}
       {modal==="user" && isManager && (
         <Modal onClose={() => setModal(null)}>
           <div style={{ marginBottom:20 }}>
